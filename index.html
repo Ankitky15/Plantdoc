@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plantdoc</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/ml5@0.12.2/dist/ml5.min.js"></script>
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
+        background-color: #121212;
+        background-image: url("https://miro.medium.com/v2/resize:fit:1400/1*CUjbLtX-FeWfT6D06ebziA.jpeg");
+        color: white;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      .container {
+        background: rgba(30, 30, 30, 0.9);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        width: 100%;
+        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-sizing: border-box;
+      }
+
+      h1 {
+        color: #4caf50;
+        font-size: 24px;
+        margin: 0 0 10px 0;
+      }
+
+      .description {
+        margin: 0 0 15px 0;
+        font-size: 14px;
+      }
+
+      .custom-file-upload {
+        display: block;
+        background: #2a2a2a;
+        color: white;
+        padding: 12px;
+        margin: 0 0 15px 0;
+        border: 2px dashed #4caf50;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 14px;
+        transition: 0.3s ease-in-out;
+      }
+
+      .custom-file-upload:hover {
+        background: #333;
+      }
+
+      .custom-file-upload input {
+        display: none;
+      }
+
+      .btn {
+        display: inline-block;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        font-size: 14px;
+        transition: 0.3s ease-in-out;
+        box-sizing: border-box;
+        flex: 1;
+        margin: 0;
+      }
+
+      .btn-scan {
+        background-color: #4caf50;
+        margin-right: 8px;
+      }
+
+      .btn-scan:hover {
+        background-color: #45a049;
+      }
+
+      .btn-camera {
+        background: #ff9800;
+      }
+
+      .btn-camera:hover {
+        background: #e68a00;
+      }
+
+      .btn-capture {
+        background: #2196f3;
+        width: 100%;
+        margin-top: 8px;
+        display: none;
+      }
+
+      .btn-capture:hover {
+        background: #0b7dda;
+      }
+
+      #result {
+        font-size: 16px;
+        font-weight: bold;
+        margin: 15px 0 0 0;
+        padding: 10px;
+        border-radius: 5px;
+        width: 100%;
+        box-sizing: border-box;
+        word-break: break-word;
+      }
+
+      #previewImage {
+        z-index: 2;
+        max-width: 100%;
+        max-height: 30vh;
+        object-fit: contain;
+        margin: 10px 0;
+        border-radius: 10px;
+        display: none;
+      }
+
+      #previewText {
+        z-index: 1;
+        position: absolute;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      #cameraFeed {
+        z-index: 2;
+        max-width: 100%;
+        max-height: 30vh;
+        border-radius: 10px;
+        display: none;
+        margin: 10px 0;
+        object-fit: contain;
+      }
+
+      .media-container {
+        position: relative;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100px;
+        margin: 10px 0;
+      }
+
+      canvas {
+        display: none;
+      }
+
+      .button-row {
+        width: 100%;
+        display: flex;
+        margin: 8px 0;
+      }
+
+      @media (max-width: 600px) {
+        .container {
+          padding: 15px;
+        }
+
+        body {
+          padding: 10px;
+        }
+
+        .btn {
+          padding: 10px 8px;
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🌿 Plantdoc</h1>
+      <p class="description">Upload a plant photo or use your camera.</p>
+
+      <label class="custom-file-upload">
+        <input type="file" id="imageInput" accept="image/*" />
+        📷 Upload Image
+      </label>
+
+      <div class="media-container">
+        <p id="previewText">Upload an Image or Use Camera</p>
+        <img id="previewImage" src="#" alt="Preview" />
+        <video id="cameraFeed" autoplay playsinline></video>
+      </div>
+      <canvas id="canvas"></canvas>
+
+      <div class="button-row">
+        <button class="btn btn-scan" id="scanBtn" onclick="classifyImage()">
+          🔍 Scan Image
+        </button>
+        <button class="btn btn-camera" id="cameraBtn" onclick="toggleCamera()">
+          📸 Use Camera
+        </button>
+      </div>
+      <button class="btn btn-capture" id="captureBtn" onclick="captureImage()">
+        📷 Capture Photo
+      </button>
+
+      <div id="result">Model is loading...</div>
+    </div>
+
+    <script>
+      const uploadInput = document.getElementById("imageInput");
+      const image = document.getElementById("previewImage");
+      const resultElement = document.getElementById("result");
+      const cameraFeed = document.getElementById("cameraFeed");
+      const cameraBtn = document.getElementById("cameraBtn");
+      const captureBtn = document.getElementById("captureBtn");
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      let stream = null;
+      let isCameraOn = false;
+
+      const classifier = ml5.imageClassifier(
+        "https://teachablemachine.withgoogle.com/models/qEfkBHHi7/model.json",
+        modelLoaded
+      );
+
+      function modelLoaded() {
+        resultElement.innerText = "Model loaded! Upload or scan an image.";
+      }
+
+      uploadInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            image.src = e.target.result;
+            image.style.display = "block";
+            cameraFeed.style.display = "none";
+            if (isCameraOn) {
+              stopCamera();
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      function classifyImage() {
+        if (image.style.display === "none" || !image.src || image.src === "#") {
+          resultElement.innerText =
+            "Please upload an image or capture one first";
+          return;
+        }
+
+        resultElement.innerText = "Classifying...";
+        classifier.classify(image, (error, results) => {
+          if (error) {
+            resultElement.innerText = `Error: ${error.message}`;
+            return;
+          }
+          const topResult = results[0];
+          resultElement.innerHTML = `
+        <p><strong>Label:</strong> ${topResult.label}</p>
+        <p><strong>Confidence:</strong> ${(topResult.confidence * 100).toFixed(
+          2
+        )}%</p>`;
+        });
+      }
+
+      async function toggleCamera() {
+        if (isCameraOn) {
+          stopCamera();
+          cameraBtn.textContent = "📸 Use Camera";
+          captureBtn.style.display = "none";
+        } else {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: "environment" },
+              audio: false,
+            });
+            cameraFeed.srcObject = stream;
+            cameraFeed.style.display = "block";
+            image.style.display = "none";
+            isCameraOn = true;
+            cameraBtn.textContent = "❌ Stop Camera";
+            captureBtn.style.display = "block";
+          } catch (err) {
+            console.error("Error accessing camera:", err);
+            resultElement.innerText =
+              "Could not access the camera. Please check permissions.";
+          }
+        }
+      }
+
+      function stopCamera() {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          cameraFeed.srcObject = null;
+          isCameraOn = false;
+          cameraFeed.style.display = "none";
+        }
+      }
+
+      function captureImage() {
+        if (!isCameraOn) return;
+
+        // Set canvas dimensions to match video feed
+        canvas.width = cameraFeed.videoWidth;
+        canvas.height = cameraFeed.videoHeight;
+
+        // Draw current frame from video onto canvas
+        ctx.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas to image and display it
+        image.src = canvas.toDataURL("image/jpeg");
+        image.style.display = "block";
+        cameraFeed.style.display = "none";
+
+        // Stop the camera after capturing
+        stopCamera();
+        cameraBtn.textContent = "📸 Use Camera";
+        captureBtn.style.display = "none";
+      }
+    </script>
+  </body>
+</html>
